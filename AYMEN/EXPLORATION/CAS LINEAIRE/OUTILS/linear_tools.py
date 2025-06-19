@@ -211,8 +211,8 @@ def plot_scores(
 def ista(
     grad_f: callable,
     prox_g: callable,
-    x0: np.ndarray,
     prox_g_args: tuple,
+    x0: np.ndarray,
     L: float,
     max_iter: int = 1000,
     tol: float = 1e-6
@@ -242,11 +242,11 @@ def ista(
     return x
 
 def ista_backtracking(
+    f: callable,
     grad_f: callable,
     prox_g: callable,
-    x0: np.ndarray,
     prox_g_args: tuple,
-    f: callable,
+    x0: np.ndarray,
     L0: float,
     eta: float = 2.0,
     max_iter: int = 1000,
@@ -284,6 +284,46 @@ def ista_backtracking(
                 break
             L *= eta
         x = z
+        if np.linalg.norm(x - x_old) < tol:
+            break
+    return x
+
+def cd(
+    grad_f: callable,
+    prox_O: callable,
+    x0: np.ndarray,
+    L: np.ndarray,
+    lmbda: float,
+    prox_O_args: tuple = [],
+    max_iter: int = 1000,
+    tol: float = 1e-6
+) -> np.ndarray:
+    """
+    Implémente l'algorithme de descente par coordonnées pour minimiser h(x) := f(x) + λΩ(x).
+
+    Args:
+        f (callable): Fonction objectif différentiable f(x).
+        grad_f (callable): Fonction qui calcule le gradient de f en x.
+        prox_O (callable): Opérateur proximal associé à Ω.
+        prox_O_args (tuple): Arguments supplémentaires à passer à prox_O.
+        x0 (np.ndarray): Point initial.
+        L (np.ndarray): Constantes de Lipschitz coordinatewise [L₁, ..., Lₙ].
+        lmbda (float): Paramètre de régularisation λ.
+        max_iter (int, optional): Nombre maximal d'itérations (défaut = 1000).
+        tol (float, optional): Tolérance pour le critère d'arrêt (défaut = 1e-6).
+
+    Returns:
+        np.ndarray: Solution estimée.
+    """
+    x = x0.copy()
+    p = len(x)
+    for k in range(max_iter):
+        x_old = x.copy()
+        ik = k % p
+        alpha_k = 1.0 / L[ik]
+        grad = grad_f(x)
+        z_ik = prox_O(x[ik] - alpha_k * grad[ik], lmbda * alpha_k, *prox_O_args)
+        x[ik] = z_ik
         if np.linalg.norm(x - x_old) < tol:
             break
     return x
