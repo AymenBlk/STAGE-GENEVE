@@ -275,11 +275,11 @@ def ista_backtracking(
         grad = grad_f(x)
         L = L0
         while True:
-            z = prox_g(x - grad / L, *prox_g_args)
+            z = prox_g(x - grad / L, L, *prox_g_args)
             diff = z - x
             f_z = f(z)
             f_x = f(x)
-            q = f_x + grad @ diff + (L / 2) * np.linalg.norm(diff) ** 2
+            q = f_x +float((grad.T @ diff))  + (L / 2) * np.linalg.norm(diff) ** 2
             if f_z <= q:
                 break
             L *= eta
