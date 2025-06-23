@@ -1,0 +1,12 @@
+# translate2compare 1.0
+# object matrix float64 2 3
+1 2 3
+4 5 6
+# object vector int64 4
+1 2 3 4
+# object scalar float64
+3.1415926535897931
+# object vector float64 3
+1.1000000000000001 2.2000000000000002 3.2999999999999998
+# object scalar int64
+42
