@@ -12,7 +12,7 @@ function ista_L(x0, f, g, ∇f, L, prox;
     cost_prev = f(x) + g(x)
     for k in 1:max_iter
         grad = ∇f(x)
-        @. x_next = prox(x-step*grad, step)
+        x_next .= prox(x .- step .* grad, step)
         
         cost_current = f(x_next) + g(x_next)
         if abs(cost_current - cost_prev) <tol
