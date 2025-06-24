@@ -327,3 +327,34 @@ def cd(
         if np.linalg.norm(x - x_old) < tol:
             break
     return x
+
+def qut_lasso_oracle(
+    X: np.ndarray,
+    sigma: float,
+    M: int,
+    alpha: float,
+    seed: int = None
+) -> float:
+    """
+    Calcule le seuil QUT pour le LASSO par simulation.
+
+    Args:
+        X (np.ndarray): Matrice des variables explicatives (n, p).
+        sigma (float): Écart-type du bruit.
+        M (int): Nombre de simulations.
+        alpha (float): Niveau de test (quantile 1 - alpha).
+        seed (int, optional): Graine aléatoire (défaut : None).
+
+    Returns:
+        float: Seuil QUT estimé.
+    """
+    n, _ = X.shape
+    rng = np.random.default_rng(seed)
+    Lambda = []
+    for _ in range(M):
+        Y_sim = rng.normal(0, sigma, size=n)
+        lambda_0 = np.linalg.norm(X.T @ Y_sim / n, ord=np.inf)
+        Lambda.append(lambda_0)
+    lambda_qut = np.quantile(Lambda, 1 - alpha)
+    
+    return lambda_qut
