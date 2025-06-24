@@ -58,14 +58,15 @@ The parameters are:
 function ista(x0, f, g, ∇f, L0, prox;
         eta = 2, max_iter = 100_000, tol = 1e-9, print_freq = 1000, verbose = true
     )
-    xnew = x = copy(x0) # xnew is defined later; we only initialize
+    x = copy(x0) 
+    xnew = copy(x) # xnew is defined later; we only initialize
     F_new = F_prev = f(x) + g(x)
     L = L0
     for k in 1:max_iter
         grad = ∇f(x)
         Ltrial = L
         while true  # search the smallest i_k (power of eta)
-            xnew = prox.(x.-grad.*(1/Ltrial), 1/Ltrial) 
+            xnew .= prox(x.-grad.*(1/Ltrial), 1/Ltrial) 
             diff = xnew.-x
             F_new = f(xnew) + g(xnew)
             Q_val = f(x) +dot(diff, grad) +(Ltrial/2)* dot(diff, diff) +g(xnew)
