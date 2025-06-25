@@ -211,9 +211,10 @@ def plot_scores(
 def ista(
     grad_f: callable,
     prox_g: callable,
-    prox_g_args: tuple,
     x0: np.ndarray,
     L: float,
+    grad_f_args: tuple = (),
+    prox_g_args: tuple = (),
     max_iter: int = 1000,
     tol: float = 1e-6
 ) -> np.ndarray:
@@ -224,8 +225,9 @@ def ista(
         grad_f (callable): Fonction qui calcule le gradient de f en x.
         prox_g (callable): Opérateur proximal associé à g.
         x0 (np.ndarray): Point de départ.
-        prox_g_args (tuple): Arguments supplémentaires à passer à prox_g.
         L (float): Constante de Lipschitz du gradient de f.
+        grad_f_args (tuple): Arguments supplémentaires à passer à grad_f (défaut : ()).
+        prox_g_args (tuple): Arguments supplémentaires à passer à prox_g (défaut : ()).
         max_iter (int, optional): Nombre maximal d'itérations (défaut : 1000).
         tol (float, optional): Tolérance pour le critère d'arrêt (défaut : 1e-6).
 
@@ -235,7 +237,7 @@ def ista(
     x = x0.copy()
     for _ in range(max_iter):
         x_old = x.copy()
-        grad = grad_f(x)
+        grad = grad_f(x, *grad_f_args)
         x = prox_g(x - grad / L, *prox_g_args)
         if np.linalg.norm(x - x_old) < tol:
             break
