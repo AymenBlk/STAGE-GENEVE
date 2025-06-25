@@ -1,0 +1,9 @@
+# Ignore every Python byte-code directory
+__pycache__/
+
+# (Optional) belt-and-suspenders rule in case you ever rename folders
+**/__pycache__/
+
+# Ignore individual compiled files anywhere
+*.py[cod]
+*$py.class
