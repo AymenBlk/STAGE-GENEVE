@@ -56,39 +56,50 @@ The parameters are:
 - `verbose`: If true, prints progress information (default is true).
 """
 function ista(x0, f, g, ∇f, L0, prox;
-        eta = 2, max_iter = 100_000, tol = 1e-9, print_freq = 1000, verbose = true
-    )
-    x = copy(x0) 
-    xnew = copy(x) # xnew is defined later; we only initialize
-    F_new = F_prev = f(x) + g(x)
-    L = L0
+        eta = 2.0, max_iter = 100_000,tol= 1e-9,print_freq = 1000,verbose = true)
+
+    x  = copy(x0)
+    x_new  = similar(x)
+    F_prev = f(x) + g(x) # coût initial
+    F_new = 0
+    L      = L0
+
     for k in 1:max_iter
         grad = ∇f(x)
-        Ltrial = L
-        while true  # search the smallest i_k (power of eta)
-            xnew .= prox(x.-grad.*(1/Ltrial), 1/Ltrial) 
-            diff = xnew.-x
-            F_new = f(xnew) + g(xnew)
-            Q_val = f(x) +dot(diff, grad) +(Ltrial/2)* dot(diff, diff) +g(xnew)
 
-            if F_new <= Q_val + eps()
-                break  # Ltrial is good
-            end 
-            Ltrial *= eta # increase at each iteration
+        L_trial = L
+        while true
+            step = 1/L_trial
+            x_new .= prox(x .- step .* grad, step)
+
+            diff = x_new .- x
+            f_new = f(x_new)
+            g_new = g(x_new)
+            F_new = f_new + g_new
+
+            Q_val = f(x) + dot(diff, grad) + (L_trial/2) * dot(diff, diff) + g_new  # majorant
+
+            F_new ≤ Q_val + eps() && break # critère BT
+            L_trial *= eta
+            if L_trial > 1e12                 
+                error("Backtracking diverged : L trop grand")
+            end
         end
-        L = Ltrial
+        L = L_trial                            # prochain tour part de L_trial
 
         if verbose && (k == 1 || k % print_freq == 0)
             @printf("[ISTA-BT] iter %6d  cost = %.3e  ΔF = %.3e  L = %.3e\n",
-                    k, F_new, abs(F_new - F_prev), L)
+                    k, F_new, abs(F_prev - F_new), L)
+        end
+        if abs(F_prev - F_new) < tol 
+            if verbose
+                @printf("[ISTA-BT] END iter %5d  cost=%.3e  diff=%.3e\n", k, F_new, abs(F_prev - F_new))
+            end
+            return x_new
         end
 
-        if abs(F_new - F_prev) < tol
-            verbose && @printf("[ISTA-BT] END iter %6d  cost = %.3e  ΔF = %.3e\n",
-                               k, F_new, abs(F_new - F_prev))
-            return xnew
-        end
-        x, F_prev = xnew, F_new
+        x .= x_new
+        F_prev = F_new
     end
     return x
 end
