@@ -73,6 +73,7 @@ class SimulationLassoOracleIsta:
             y, X, beta = self._generate_data(s, seed = self.seed + i)
 
             lmbda = self._get_lambda(X)
+            
             L = np.linalg.norm(X.T @ X, ord=2) / self.n
             beta_hat = np.zeros(self.p)
 
