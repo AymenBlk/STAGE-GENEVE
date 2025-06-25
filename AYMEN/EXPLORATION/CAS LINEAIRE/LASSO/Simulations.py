@@ -72,8 +72,7 @@ class SimulationLassoOracleIsta:
 
             y, X, beta = self._generate_data(s, seed = self.seed + i)
 
-            #lmbda = self._get_lambda(X)
-            lmbda = 0.1
+            lmbda = self._get_lambda(X)
             L = np.linalg.norm(X.T @ X, ord=2) / self.n
             beta_hat = np.zeros(self.p)
 
@@ -93,8 +92,9 @@ class SimulationLassoOracleIsta:
 
             if self.verbose:
                 print(f"\t |{i+1}| Simulation {i+1}/{self.simu_iter} :")
-                print(f"\t\t beta : {beta}")
-                print(f"\t\t beta estimé : {beta_hat}")
+                #print(f"\t\t beta : {beta}")
+                #print(f"\t\t beta estimé : {beta_hat}")
+                print(f"\t\t Lambda : {lmbda}")
                 print(f"\t\t Score :")
                 for key in score_tmp:
                     print(f"\t\t\t{key} : {score_tmp[key]}")

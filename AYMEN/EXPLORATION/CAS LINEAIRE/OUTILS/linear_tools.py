@@ -354,7 +354,7 @@ def qut_lasso_oracle(
     rng = np.random.default_rng(seed)
     Lambda = []
     for _ in range(M):
-        Y_sim = rng.normal(0, sigma, size=n)
+        Y_sim = rng.normal(0, sigma**2, size=n)
         lambda_0 = np.linalg.norm(X.T @ Y_sim / n, ord=np.inf)
         Lambda.append(lambda_0)
     lambda_qut = np.quantile(Lambda, 1 - alpha)
