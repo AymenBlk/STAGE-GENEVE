@@ -31,7 +31,7 @@ def generate_data(
     X = np.random.randn(n, p)
 
     beta = np.zeros(p)
-    beta[:s] = 10
+    beta[:s] = 3
 
     noise = sigma * np.random.randn(n)
 
@@ -195,17 +195,18 @@ def plot_scores(
         title (str): Titre du graphique
     """
     plt.figure(figsize=(12, 5 * (len(score) + 2) // 3))
+    plt.suptitle(title, fontsize=16)
 
     for i, key in enumerate(score, 1):
         plt.subplot((len(score) + 2) // 3, 3, i)
         plt.plot(x_range, score[key], marker='o', linestyle='-', color='tab:blue' if key == 'pesr' else 'tab:orange', label=key.upper())
         plt.xlabel('s')
         plt.ylabel(f'{key.upper()} Score')
-        plt.title(f'{key.upper()} ({title})')
+        plt.title(f'{key.upper()}')
         plt.legend()
         plt.grid(True)
 
-    plt.tight_layout()
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
 
 def ista(
@@ -247,9 +248,11 @@ def ista_backtracking(
     f: callable,
     grad_f: callable,
     prox_g: callable,
-    prox_g_args: tuple,
     x0: np.ndarray,
     L0: float,
+    f_args: tuple = (),
+    grad_f_args: tuple = (),
+    prox_g_args: tuple = (),
     eta: float = 2.0,
     max_iter: int = 1000,
     tol: float = 1e-6
@@ -258,12 +261,14 @@ def ista_backtracking(
     Implémente ISTA avec backtracking pour minimiser f(x) + g(x).
 
     Args:
+        f (callable): Fonction f(x) (différentiable).
         grad_f (callable): Fonction qui calcule le gradient de f en x.
         prox_g (callable): Opérateur proximal associé à g.
         x0 (np.ndarray): Point de départ.
-        prox_g_args (tuple): Arguments supplémentaires à passer à prox_g.
-        f (callable): Fonction f(x) (différentiable).
         L0 (float): Valeur initiale de la constante de Lipschitz.
+        f_args (tuple): Arguments supplémentaires à passer à f (défaut : ()).
+        grad_f_args (tuple): Arguments supplémentaires à passer à grad_f (défaut : ()).
+        prox_g_args (tuple): Arguments supplémentaires à passer à prox_g (défaut : ()).
         eta (float, optional): Facteur d'augmentation de L (défaut : 2.0).
         max_iter (int, optional): Nombre maximal d'itérations (défaut : 1000).
         tol (float, optional): Tolérance pour le critère d'arrêt (défaut : 1e-6).
@@ -274,13 +279,13 @@ def ista_backtracking(
     x = x0.copy()
     for _ in range(max_iter):
         x_old = x.copy()
-        grad = grad_f(x)
+        grad = grad_f(x, *grad_f_args)
         L = L0
         while True:
             z = prox_g(x - grad / L, L, *prox_g_args)
             diff = z - x
-            f_z = f(z)
-            f_x = f(x)
+            f_z = f(z, *f_args)
+            f_x = f(x, *f_args)
             q = f_x +float((grad.T @ diff))  + (L / 2) * np.linalg.norm(diff) ** 2
             if f_z <= q:
                 break
@@ -354,8 +359,8 @@ def qut_lasso_oracle(
     rng = np.random.default_rng(seed)
     Lambda = []
     for _ in range(M):
-        Y_sim = rng.normal(0, sigma**2, size=n)
-        lambda_0 = np.linalg.norm(X.T @ Y_sim / n, ord=np.inf)
+        Y_sim = rng.normal(0, sigma, size=n)
+        lambda_0 = np.linalg.norm(2 * (X.T @ Y_sim), ord=np.inf)
         Lambda.append(lambda_0)
     lambda_qut = np.quantile(Lambda, 1 - alpha)
     
