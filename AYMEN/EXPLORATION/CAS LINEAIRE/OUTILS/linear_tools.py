@@ -8,6 +8,7 @@ def generate_data(
         p: int, 
         s: int, 
         sigma: float = 0.0, 
+        beta0: float = 3.0,
         seed: int = None
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
@@ -18,6 +19,7 @@ def generate_data(
         p (int): Nombre de variables explicatives.
         s (int): Nombre de variables informatives (non nulles dans beta).
         sigma (float, optional): Écart-type du bruit gaussien ajouté (défaut : 0.0).
+        beta0 (float, optional): Valeurs des coefficients non nulle (défaut : 3.0).
         seed (int, optional): Graine aléatoire (défaut : None).
 
     Returns:
@@ -31,9 +33,9 @@ def generate_data(
     X = np.random.randn(n, p)
 
     beta = np.zeros(p)
-    beta[:s] = 3
+    beta[:s] = beta0
 
-    noise = sigma * np.random.randn(n)
+    noise = np.random.normal(0, sigma, size=n)
 
     y = X @ beta + noise
 
@@ -209,6 +211,54 @@ def plot_scores(
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
 
+def plot_simulations(
+    scores: dict,
+    x_range: list,
+    title: str = ""
+    ) -> None:
+    """
+    Affiche un tableau de graphiques pour présenter les différents scores de simulation différentes.
+
+    Args:
+        scores (dict): Dictionnaire contenant les différents scores de simulations
+        x_range (list): Liste des abscisses sur les différents scores
+        title (str): Titre du graphique
+    """
+
+    score_keys = list(next(iter(scores.values())).keys())
+
+    keys_list = [set(score_dict.keys()) for score_dict in scores.values()]
+    first_keys = keys_list[0]
+    for i, keys in enumerate(keys_list[1:], 2):
+        if keys != first_keys:
+            raise ValueError(f"Le dictionnaire de scores n°{i} n'a pas les mêmes clés que le premier : {first_keys} vs {keys}")
+
+    n_scores = len(score_keys)
+    plt.figure(figsize=(12, 5 * ((n_scores + 2) // 3)))
+    plt.suptitle(title, fontsize=16)
+
+    colors = plt.cm.get_cmap('tab10', len(scores))
+
+    for i, key in enumerate(score_keys, 1):
+        plt.subplot((n_scores + 2) // 3, 3, i)
+        for j, (title_score, score_dict) in enumerate(scores.items()):
+            plt.plot(
+                x_range,
+                score_dict[key],
+                marker='o',
+                linestyle='-',
+                color=colors(j),
+                label=title_score
+            )
+        plt.xlabel('s')
+        plt.ylabel(f'{key.upper()} Score')
+        plt.title(f'{key.upper()}')
+        plt.legend()
+        plt.grid(True)
+
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.show()
+
 def ista(
     grad_f: callable,
     prox_g: callable,
@@ -278,15 +328,15 @@ def ista_backtracking(
     """
     x = x0.copy()
     for _ in range(max_iter):
-        x_old = x.copy()
+        x_old = x
         grad = grad_f(x, *grad_f_args)
+        f_x = f(x, *f_args)
         L = L0
         while True:
             z = prox_g(x - grad / L, L, *prox_g_args)
             diff = z - x
             f_z = f(z, *f_args)
-            f_x = f(x, *f_args)
-            q = f_x +float((grad.T @ diff))  + (L / 2) * np.linalg.norm(diff) ** 2
+            q = f_x + float(np.dot(grad, diff)) + (L / 2) * np.linalg.norm(diff) ** 2
             if f_z <= q:
                 break
             L *= eta
@@ -301,6 +351,7 @@ def cd(
     x0: np.ndarray,
     L: np.ndarray,
     lmbda: float,
+    grad_f_args: tuple = [],
     prox_O_args: tuple = [],
     max_iter: int = 1000,
     tol: float = 1e-6
@@ -312,10 +363,11 @@ def cd(
         f (callable): Fonction objectif différentiable f(x).
         grad_f (callable): Fonction qui calcule le gradient de f en x.
         prox_O (callable): Opérateur proximal associé à Ω.
-        prox_O_args (tuple): Arguments supplémentaires à passer à prox_O.
         x0 (np.ndarray): Point initial.
         L (np.ndarray): Constantes de Lipschitz coordinatewise [L₁, ..., Lₙ].
         lmbda (float): Paramètre de régularisation λ.
+        prox_O_args (tuple, optional): Arguments supplémentaires à passer à prox_O. (défaut = ())
+        grad_f_args (tuple, optional): Arguments supplémentaires à passer à grad_f. (défaut = ())
         max_iter (int, optional): Nombre maximal d'itérations (défaut = 1000).
         tol (float, optional): Tolérance pour le critère d'arrêt (défaut = 1e-6).
 
@@ -327,11 +379,10 @@ def cd(
     for k in range(max_iter):
         x_old = x.copy()
         ik = k % p
-        alpha_k = 1.0 / L[ik]
-        grad = grad_f(x)
-        z_ik = prox_O(x[ik] - alpha_k * grad[ik], lmbda * alpha_k, *prox_O_args)
+        grad = grad_f(x, *grad_f_args)
+        z_ik = prox_O(x[ik] - (grad[ik] / L[ik]), lmbda / L[ik], *prox_O_args)
         x[ik] = z_ik
-        if np.linalg.norm(x - x_old) < tol:
+        if k%p == 0 and np.linalg.norm(x - x_old) < tol:
             break
     return x
 
