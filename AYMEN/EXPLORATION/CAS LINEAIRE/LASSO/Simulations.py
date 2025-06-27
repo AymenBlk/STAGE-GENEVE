@@ -96,8 +96,8 @@ class SimulationLassoOracleIsta:
 
             if self.verbose:
                 print(f"\t |{i+1}| Simulation {i+1}/{self.simu_iter} :")
-                #print(f"\t\t beta : {beta}")
-                #print(f"\t\t beta estimé : {beta_hat}")
+                print(f"\t\t beta : {beta}")
+                print(f"\t\t beta estimé : {beta_hat}")
                 print(f"\t\t Lambda : {lmbda}")
                 print(f"\t\t Score :")
                 for key in score_tmp:
@@ -320,8 +320,8 @@ class SimulationLassoOracleCd:
     def _grad_f(self, beta, y, X):
         return - 2 * (X.T @ (y - X @ beta))
 
-    def _prox_O(self, z, t):
-        return  np.sign(z) * np.maximum(np.abs(z) - t, 0)
+    def _prox_O(self, z, L, lmbda):
+        return  np.sign(z) * np.maximum(np.abs(z) - lmbda / L, 0)
 
     def _simulation(self, s):
 
@@ -336,7 +336,9 @@ class SimulationLassoOracleCd:
 
             lmbda = self._get_lambda(X)
 
-            L = 2 * np.sum(X ** 2, axis=0)
+            L = [2 *  (np.linalg.norm(X[:, j], ord=2)**2) for j in range(X.shape[1])]
+            #L = max(L)*np.ones(X.shape[1])
+
             beta_hat = np.zeros(self.p)
 
             beta_hat = cd(grad_f=self._grad_f,
@@ -345,7 +347,7 @@ class SimulationLassoOracleCd:
                             L=L,
                             lmbda=lmbda,
                             grad_f_args=(y, X),
-                            prox_O_args=[],
+                            prox_O_args=[lmbda],
                             max_iter=self.max_iter,
                             tol=self.tol)
 
@@ -356,9 +358,9 @@ class SimulationLassoOracleCd:
 
             if self.verbose:
                 print(f"\t |{i+1}| Simulation {i+1}/{self.simu_iter} :")
-                #print(f"\t\t beta : {beta}")
-                #print(f"\t\t beta estimé : {beta_hat}")
-                #print(f"\t\t L : {L}")
+                print(f"\t\t beta : {beta}")
+                print(f"\t\t beta estimé : {beta_hat}")
+                print(f"\t\t L : {L}")
                 print(f"\t\t Lambda : {lmbda}")
                 print(f"\t\t Score :")
                 for key in score_tmp:

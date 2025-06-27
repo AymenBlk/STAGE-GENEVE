@@ -377,12 +377,12 @@ def cd(
     x = x0.copy()
     p = len(x)
     for k in range(max_iter):
-        x_old = x.copy()
+        if k % p == 0:
+            x_old = x.copy()
         ik = k % p
         grad = grad_f(x, *grad_f_args)
-        z_ik = prox_O(x[ik] - (grad[ik] / L[ik]), lmbda / L[ik], *prox_O_args)
-        x[ik] = z_ik
-        if k%p == 0 and np.linalg.norm(x - x_old) < tol:
+        x[ik] = prox_O(x[ik] - grad[ik] / L[ik], L[ik], *prox_O_args)
+        if ik == p-1 and np.linalg.norm(x - x_old) < tol:
             break
     return x
 
