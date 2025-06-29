@@ -448,3 +448,67 @@ def qut_square_root_lasso(
     lambda_qut = np.quantile(Lambda, 1 - alpha)
     
     return lambda_qut
+
+def dichotomie(
+    F: callable,
+    F_args: tuple = [],
+    a: float = 1e-8,
+    b: float = 50.0,
+    tol: float = 1e-3
+) -> float:
+    """
+    Approche la solution de F(x) = 0 sur l'intervalle [a, b] avec une précision epsilon.
+    
+    Args :
+        F (callable): fonction continue pour laquelle on cherche une racine.
+        F_args (tuple, optional): Arguments supplémentaires à passer à F. (défaut = ())
+        a, b ((float, float), optional) : bornes de l'intervalle, avec F(a) * F(b) < 0. (défaut = (1e-8,50.0))
+        tol (float, optional) : précision souhaitée. (défaut = 1e-3)
+
+    Returns:
+        float: Une approximation de la racine de F dans [a, b].
+    """
+    if F(a, *F_args) * F(b, *F_args) > 0:
+        raise ValueError("La fonction doit changer de signe sur l'intervalle [a, b].")
+    
+    while (b - a) > tol:
+        m = (a + b) / 2
+        if F(a, *F_args) * F(m, *F_args) <= 0:
+            b = m
+        else:
+            a = m
+    return (a + b) / 2
+
+def newton(
+    F: callable,
+    F_prime: callable,
+    F_args: tuple = (),
+    x0: float = 0.0,
+    tol: float = 1e-6,
+    max_iter: int = 100
+) -> float:
+    """
+    Approche la solution de F(x) = 0 par la méthode de Newton-Raphson à partir de x0.
+
+    Args :
+        F (callable) : fonction pour laquelle on cherche une racine.
+        F_prime (callable) : dérivée de F.
+        F_args (tuple, optional) : Arguments supplémentaires à passer à F et F'. (défaut = ())
+        x0 (float, optional) : point de départ de l'itération. (défaut = 0.0)
+        tol (float, optional) : précision souhaitée. (défaut = 1e-6)
+        max_iter (int, optional) : nombre maximum d’itérations. (défaut = 100)
+
+    Returns:
+        float : Une approximation de la racine de F autour de x0.
+    """
+    x = x0
+    for _ in range(max_iter):
+        fx = F(x, *F_args)
+        dfx = F_prime(x, *F_args)
+        if dfx == 0:
+            raise ZeroDivisionError("Dérivée nulle — méthode de Newton échoue.")
+        x_new = x - fx / dfx
+        if abs(x_new - x) < tol:
+            return x_new
+        x = x_new
+    raise RuntimeError(f"Convergence non atteinte après {max_iter} itérations. Pour la méthode de Newton !")
