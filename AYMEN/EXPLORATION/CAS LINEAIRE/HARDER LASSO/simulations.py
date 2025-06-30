@@ -1,5 +1,5 @@
 import numpy as np
-from linear_tools import generate_data, pesr, tpr, fdr, f1, plot_scores, ista_backtracking, qut_square_root_lasso, dichotomie
+from linear_tools import generate_data, pesr, tpr, fdr, f1, plot_scores, ista_backtracking, qut_square_root_lasso, dichotomie, newton
 class SimulationHarderLassoIstaBacktracking:
 
     def __init__(self, n, p, list_s, sigma, nu, simu_iter=100, qut_iter=100, max_iter=1000, tol=1e-6, seed=42, verbose=False):
@@ -80,29 +80,45 @@ class SimulationHarderLassoIstaBacktracking:
 
     def _prox_g(self, z, L, lmbda, nu):
 
-        """
+        lmbda_scaled = lmbda
 
-        TOUT EST FAUX A DEMANDER !
+        def F_jump(k, lmbda, nu):
+            return k**(2 - nu) + 2*k + k**nu + 2 * lmbda * (nu - 1)
+
+        kappa = dichotomie(F_jump, (lmbda_scaled, nu), a=1e-8, b=100.0, tol=self.tol)
+
+        phi = 0.5 * kappa + lmbda_scaled / (1 + kappa**(1 - nu))
+
+        def rho_nu_prime(theta, nu):
+            abs_theta = abs(theta)
+            denom = (1 + abs_theta**(1 - nu))**2
+            return np.sign(theta) * (1 + nu * abs_theta**(1 - nu)) / denom
+
+        def drho_nu_prime(theta, nu):
+            abs_theta = abs(theta)
+            num = nu * (1 - nu) * abs_theta**(-nu)
+            denom = (1 + abs_theta**(1 - nu))**3
+            return num / denom
+
+        def F_theta(theta, z, lmbda, nu):
+            return theta - z + lmbda * rho_nu_prime(theta, nu)
+
+        def F_theta_prime(theta, z, lmbda, nu):
+            return 1 + lmbda * drho_nu_prime(theta, nu)
 
         result = np.zeros_like(z)
-
-        jump = self._get_jump(lmbda / L, nu)
-        threshold = 0.5 * jump + lmbda / (1 + jump**(1 - nu))
-
-        for j in range(len(z)):
-            zj = z[j]
-            abs_zj = np.abs(zj)
-
-            if abs_zj <= threshold:
+        for j, z_j in enumerate(z):
+            print(f"⚠️ z_j={z_j:.3f}, phi={phi:.3f}")
+            if abs(z_j) <= phi:
                 result[j] = 0.0
             else:
-                result[j] = (1 - jump / abs_zj) * zj
+                try:
+                    theta = newton(F_theta, F_theta_prime, F_args=(z_j, lmbda_scaled, nu), x0=z_j, tol=self.tol)
+                except Exception:
+                    theta = z_j
+                result[j] = theta
 
-            if self.verbose:
-                print(f"  → z_j = {z[j]:.3f}, threshold = {threshold:.3f}, output = {result[j]:.3f}")
-        
-        return result"""
-        return None
+        return result
 
     def _simulation(self, s):
 
