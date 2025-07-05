@@ -188,6 +188,9 @@ class SimulationLassoOracleIstaBacktracking:
     
     def _f(self, beta, y, X):
         return np.linalg.norm(y - X @ beta) ** 2
+    
+    def _g(self, beta, lmbda):
+        return lmbda * np.linalg.norm(beta)
 
     def _grad_f(self, beta, y, X):
         return - 2 * (X.T @ (y - X @ beta))
@@ -211,11 +214,13 @@ class SimulationLassoOracleIstaBacktracking:
             beta_hat = np.zeros(self.p)
 
             beta_hat = ista_backtracking(f=self._f,
+                            g=self._g,
                             grad_f=self._grad_f,
                             prox_g=self._prox_g,
                             x0=beta_hat,
                             L0=self.L0,
                             f_args=(y, X),
+                            g_args=[lmbda],
                             grad_f_args=(y, X),
                             prox_g_args=[lmbda],
                             max_iter=self.max_iter,

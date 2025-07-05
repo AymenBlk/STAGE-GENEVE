@@ -296,11 +296,13 @@ def ista(
 
 def ista_backtracking(
     f: callable,
+    g: callable,
     grad_f: callable,
     prox_g: callable,
     x0: np.ndarray,
     L0: float,
     f_args: tuple = (),
+    g_args: tuple = (),
     grad_f_args: tuple = (),
     prox_g_args: tuple = (),
     eta: float = 2.0,
@@ -312,11 +314,13 @@ def ista_backtracking(
 
     Args:
         f (callable): Fonction f(x) (différentiable).
+        g (callable): Fonction g(x) (différentiable).
         grad_f (callable): Fonction qui calcule le gradient de f en x.
         prox_g (callable): Opérateur proximal associé à g.
         x0 (np.ndarray): Point de départ.
         L0 (float): Valeur initiale de la constante de Lipschitz.
         f_args (tuple): Arguments supplémentaires à passer à f (défaut : ()).
+        g_args (tuple): Arguments supplémentaires à passer à g (défaut : ()).
         grad_f_args (tuple): Arguments supplémentaires à passer à grad_f (défaut : ()).
         prox_g_args (tuple): Arguments supplémentaires à passer à prox_g (défaut : ()).
         eta (float, optional): Facteur d'augmentation de L (défaut : 2.0).
@@ -335,13 +339,13 @@ def ista_backtracking(
         while True:
             z = prox_g(x - grad / L, L, *prox_g_args)
             diff = z - x
-            f_z = f(z, *f_args)
-            q = f_x + float(np.dot(grad, diff)) + (L / 2) * np.linalg.norm(diff) ** 2
-            if f_z <= q:
+            F_z = f(z, *f_args) + g(z, *g_args)
+            q = f_x + np.dot(grad, diff) + (L / 2) * np.linalg.norm(diff)**2 + g(z, *g_args)
+            if F_z <= q:
                 break
             L *= eta
         x = z
-        if np.linalg.norm(x - x_old) < tol:
+        if _ > 1 and np.linalg.norm(x - x_old) < tol:
             break
     return x
 
@@ -469,7 +473,8 @@ def dichotomie(
         float: Une approximation de la racine de F dans [a, b].
     """
     if F(a, *F_args) * F(b, *F_args) > 0:
-        raise ValueError("La fonction doit changer de signe sur l'intervalle [a, b].")
+        print(f"⚠️ Pas de changement de signe : lambda={F_args[0]:.4f}, nu={F_args[1]:.4f}")
+        return 0.0
     
     while (b - a) > tol:
         m = (a + b) / 2

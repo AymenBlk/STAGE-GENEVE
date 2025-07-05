@@ -44,12 +44,14 @@ class SimulationHarderLassoIstaBacktracking:
 
     def _generate_data(self, s, seed=False):
         if not seed: seed = self.seed
-        return generate_data(n=self.n,
+        y, X, beta = generate_data(n=self.n,
                             p=self.p, 
                             s=s,
                             sigma=self.sigma,
                             beta0=self.beta0,
                             seed=seed)
+        X = X / X.std(axis=0)
+        return y, X, beta
 
     def _get_lambda(self, X, alpha=0.05, seed=False):
         if not seed: seed = self.seed
@@ -60,6 +62,10 @@ class SimulationHarderLassoIstaBacktracking:
     
     def _f(self, beta, y, X):
         return np.linalg.norm(y - X @ beta, ord=2)
+    
+    def _g(self, beta, lmbda):
+        abs_beta = np.abs(beta)
+        return lmbda * np.sum(abs_beta / (1 + abs_beta**(1 - self.nu)))
 
     def _grad_f(self, beta, y, X):
         r = y - X @ beta
@@ -73,52 +79,41 @@ class SimulationHarderLassoIstaBacktracking:
         def F(k, lmbda, nu):
             return k**(2 - nu) + 2*k + k**nu + 2 * lmbda * (nu - 1)
         
-        a = 1e-8
-        b = 50
+        a = 1e-25
+        b = 500
 
         return dichotomie(F, [lmbda, nu], a, b, self.tol)
 
+    def _rho_nu_prime(self, beta, nu):
+            abs_beta = np.abs(beta)
+            denom = (1 + abs_beta**(1 - nu))**2
+            return np.sign(beta) * (1 + nu * abs_beta**(1 - nu)) / denom
+
+    def _drho_nu_prime(self, beta, nu):
+        abs_beta = np.abs(beta)
+        num = nu * (1 - nu) * abs_beta**(-nu)
+        denom = (1 + abs_beta**(1 - nu))**3
+        return num / denom
+
+    def _F_beta(self, beta, z, lmbda, nu):
+        return beta - z + lmbda * self._rho_nu_prime(beta, nu)
+
+    def _F_beta_prime(self, beta, z, lmbda, nu):
+        return 1 + lmbda * self._drho_nu_prime(beta, nu)
+
     def _prox_g(self, z, L, lmbda, nu):
+        lmbda_scaled = lmbda / L
 
-        lmbda_scaled = lmbda
-
-        def F_jump(k, lmbda, nu):
-            return k**(2 - nu) + 2*k + k**nu + 2 * lmbda * (nu - 1)
-
-        kappa = dichotomie(F_jump, (lmbda_scaled, nu), a=1e-8, b=100.0, tol=self.tol)
-
+        kappa = self._get_jump(lmbda_scaled, nu)
         phi = 0.5 * kappa + lmbda_scaled / (1 + kappa**(1 - nu))
 
-        def rho_nu_prime(theta, nu):
-            abs_theta = abs(theta)
-            denom = (1 + abs_theta**(1 - nu))**2
-            return np.sign(theta) * (1 + nu * abs_theta**(1 - nu)) / denom
+        prox = np.zeros_like(z)
+        mask = np.abs(z) > phi
+        prox[~mask] = 0.0
 
-        def drho_nu_prime(theta, nu):
-            abs_theta = abs(theta)
-            num = nu * (1 - nu) * abs_theta**(-nu)
-            denom = (1 + abs_theta**(1 - nu))**3
-            return num / denom
-
-        def F_theta(theta, z, lmbda, nu):
-            return theta - z + lmbda * rho_nu_prime(theta, nu)
-
-        def F_theta_prime(theta, z, lmbda, nu):
-            return 1 + lmbda * drho_nu_prime(theta, nu)
-
-        result = np.zeros_like(z)
-        for j, z_j in enumerate(z):
-            print(f"⚠️ z_j={z_j:.3f}, phi={phi:.3f}")
-            if abs(z_j) <= phi:
-                result[j] = 0.0
-            else:
-                try:
-                    theta = newton(F_theta, F_theta_prime, F_args=(z_j, lmbda_scaled, nu), x0=z_j, tol=self.tol)
-                except Exception:
-                    theta = z_j
-                result[j] = theta
-
-        return result
+        for i in np.where(mask)[0]:
+            prox[i] = newton(self._F_beta, self._F_beta_prime, F_args=(z[i], lmbda_scaled, nu), x0=z[i], tol=1e-6)
+        return prox
 
     def _simulation(self, s):
 
@@ -131,16 +126,18 @@ class SimulationHarderLassoIstaBacktracking:
 
             y, X, beta = self._generate_data(s, seed = self.seed + i)
 
-            lmbda = self._get_lambda(X)
+            lmbda = 1 * self._get_lambda(X)
 
             beta_hat = np.zeros(self.p)
 
             beta_hat = ista_backtracking(f=self._f,
+                            g=self._g,
                             grad_f=self._grad_f,
                             prox_g=self._prox_g,
                             x0=beta_hat,
                             L0=self.L0,
                             f_args=(y, X),
+                            g_args=[lmbda],
                             grad_f_args=(y, X),
                             prox_g_args=[lmbda, self.nu],
                             max_iter=self.max_iter,
