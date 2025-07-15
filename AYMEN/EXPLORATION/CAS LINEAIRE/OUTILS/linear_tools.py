@@ -186,7 +186,8 @@ def f1(
 def plot_scores(
     score: dict,
     x_range: list,
-    title: str
+    title: str,
+    x_label: str = 's'
     ) -> None:
     """
     Affiche un tableau de graphiques pour présenter les différents scores.
@@ -195,6 +196,7 @@ def plot_scores(
         score (dict): Dictionnaire contenant différentes métriques de score
         x_range (list): Liste des abscisses sur les différents scores
         title (str): Titre du graphique
+        x_label (str): Label de l'axe des x (de défaut : 's')
     """
     plt.figure(figsize=(12, 5 * (len(score) + 2) // 3))
     plt.suptitle(title, fontsize=16)
@@ -202,7 +204,7 @@ def plot_scores(
     for i, key in enumerate(score, 1):
         plt.subplot((len(score) + 2) // 3, 3, i)
         plt.plot(x_range, score[key], marker='o', linestyle='-', color='tab:blue' if key == 'pesr' else 'tab:orange', label=key.upper())
-        plt.xlabel('s')
+        plt.xlabel(x_label)
         plt.ylabel(f'{key.upper()} Score')
         plt.title(f'{key.upper()}')
         plt.legend()

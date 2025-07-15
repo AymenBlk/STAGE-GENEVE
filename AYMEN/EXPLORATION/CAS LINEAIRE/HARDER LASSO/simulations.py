@@ -109,6 +109,7 @@ class SimulationHarderLassoIstaBacktracking:
 
         prox = np.zeros_like(z)
         mask = np.abs(z) > phi
+        
         prox[~mask] = 0.0
 
         for i in np.where(mask)[0]:
@@ -150,8 +151,8 @@ class SimulationHarderLassoIstaBacktracking:
 
             if self.verbose:
                 print(f"\t |{i+1}| Simulation {i+1}/{self.simu_iter} :")
-                print(f"\t\t beta : {beta}")
-                print(f"\t\t beta estimé : {beta_hat}")
+                #print(f"\t\t beta : {beta}")
+                #print(f"\t\t beta estimé : {beta_hat}")
                 print(f"\t\t Lambda : {lmbda}")
                 print(f"\t\t Score :")
                 for key in score_tmp:
