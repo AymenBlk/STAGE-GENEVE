@@ -43,7 +43,6 @@ def dsigmoid(u):
 def mse(y, y_hat):
     return np.mean((y - y_hat) ** 2)
 
-
 def dmse(y, y_hat):
     return 2 * (y_hat - y) / y.shape[1]
 

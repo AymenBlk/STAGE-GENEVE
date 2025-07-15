@@ -2,13 +2,14 @@ import numpy as np
 from linear_tools import generate_data, pesr, tpr, fdr, f1, plot_scores, ista_backtracking, qut_square_root_lasso, dichotomie, newton
 class SimulationHarderLassoIstaBacktracking:
 
-    def __init__(self, n, p, list_s, sigma, nu, simu_iter=100, qut_iter=100, max_iter=1000, tol=1e-6, seed=42, verbose=False):
+    def __init__(self, n, p, list_s, sigma, nu = None, simu_iter=100, qut_iter=100, max_iter=1000, tol=1e-6, seed=42, verbose=False):
 
         self.n = n
         self.p = p
         self.list_s = list_s
         self.sigma = sigma
-        self.nu = nu
+
+        self.nu_vals = [nu] if nu is not None else [1.0, 0.7, 0.4, 0.3, 0.2, 0.1]
 
         self.L0 = 10
         self.beta0 = 3
@@ -60,12 +61,22 @@ class SimulationHarderLassoIstaBacktracking:
                                 alpha=alpha,
                                 seed=seed)
     
+    def _get_lambda_nu_path(self, lmbda_max):
+        path = []
+        if len(self.nu_vals) == 1:
+            return [(lmbda_max, self.nu_vals[0])]
+        for k, nu_k in enumerate(self.nu_vals):
+            ratio = np.exp(k) / (1 + np.exp(k))
+            lmbda_k = ratio * lmbda_max
+            path.append((lmbda_k, nu_k))
+        return path
+    
     def _f(self, beta, y, X):
         return np.linalg.norm(y - X @ beta, ord=2)
     
-    def _g(self, beta, lmbda):
+    def _g(self, beta, lmbda, nu):
         abs_beta = np.abs(beta)
-        return lmbda * np.sum(abs_beta / (1 + abs_beta**(1 - self.nu)))
+        return lmbda * np.sum(abs_beta / (1 + abs_beta**(1 - nu)))
 
     def _grad_f(self, beta, y, X):
         r = y - X @ beta
@@ -79,15 +90,13 @@ class SimulationHarderLassoIstaBacktracking:
         def F(k, lmbda, nu):
             return k**(2 - nu) + 2*k + k**nu + 2 * lmbda * (nu - 1)
         
-        a = 1e-25
-        b = 500
-
+        a, b = 1e-25, 500 
         return dichotomie(F, [lmbda, nu], a, b, self.tol)
 
     def _rho_nu_prime(self, beta, nu):
-            abs_beta = np.abs(beta)
-            denom = (1 + abs_beta**(1 - nu))**2
-            return np.sign(beta) * (1 + nu * abs_beta**(1 - nu)) / denom
+        abs_beta = np.abs(beta)
+        denom = (1 + abs_beta**(1 - nu))**2
+        return np.sign(beta) * (1 + nu * abs_beta**(1 - nu)) / denom
 
     def _drho_nu_prime(self, beta, nu):
         abs_beta = np.abs(beta)
@@ -103,6 +112,9 @@ class SimulationHarderLassoIstaBacktracking:
 
     def _prox_g(self, z, L, lmbda, nu):
         lmbda_scaled = lmbda / L
+
+        if nu == 1.0:
+            return np.sign(z) * np.maximum(np.abs(z) - lmbda_scaled, 0)
 
         kappa = self._get_jump(lmbda_scaled, nu)
         phi = 0.5 * kappa + lmbda_scaled / (1 + kappa**(1 - nu))
@@ -130,19 +142,24 @@ class SimulationHarderLassoIstaBacktracking:
             lmbda = 1 * self._get_lambda(X)
 
             beta_hat = np.zeros(self.p)
+            path = self._get_lambda_nu_path(lmbda)
 
-            beta_hat = ista_backtracking(f=self._f,
-                            g=self._g,
-                            grad_f=self._grad_f,
-                            prox_g=self._prox_g,
-                            x0=beta_hat,
-                            L0=self.L0,
-                            f_args=(y, X),
-                            g_args=[lmbda],
-                            grad_f_args=(y, X),
-                            prox_g_args=[lmbda, self.nu],
-                            max_iter=self.max_iter,
-                            tol=self.tol)
+            for lmbda_k, nu_k in path:
+
+                beta_hat = ista_backtracking(
+                    f=self._f,
+                    g=self._g,
+                    grad_f=self._grad_f,
+                    prox_g=self._prox_g,
+                    x0=beta_hat,
+                    L0=self.L0,
+                    f_args=(y, X),
+                    g_args=[lmbda_k, nu_k],
+                    grad_f_args=(y, X),
+                    prox_g_args=[lmbda_k, nu_k],
+                    max_iter=self.max_iter,
+                    tol=self.tol
+                )
 
             score_tmp = self._get_score(beta, beta_hat)
 
@@ -181,4 +198,4 @@ class SimulationHarderLassoIstaBacktracking:
 
     def plot(self):
 
-        plot_scores(self.score, self.list_s, f"HARDER LASSO ISTA with backtracking σ={self.sigma}, n={self.n}, p={self.p}, nu={self.nu}")
+        plot_scores(self.score, self.list_s, f"HARDER LASSO ISTA with backtracking σ={self.sigma}, n={self.n}, p={self.p}, nu={self.nu_vals[-1]}, warm start")
