@@ -9,7 +9,7 @@ class SimulationHarderLassoIstaBacktracking:
         self.list_s = list_s
         self.sigma = sigma
 
-        self.nu_vals = [nu] if nu is not None else [1.0, 0.7, 0.4, 0.3, 0.2, 0.1]
+        self.nu_vals = [nu] if nu is not None else [0.9, 0.9, 0.9, 0.9, 0.9, 0.9]
 
         self.L0 = 10
         self.beta0 = 3

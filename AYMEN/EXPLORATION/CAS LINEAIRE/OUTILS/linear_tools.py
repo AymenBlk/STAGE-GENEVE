@@ -187,7 +187,8 @@ def plot_scores(
     score: dict,
     x_range: list,
     title: str,
-    x_label: str = 's'
+    x_label: str = 's',
+    save_path: str = None
     ) -> None:
     """
     Affiche un tableau de graphiques pour présenter les différents scores.
@@ -211,12 +212,14 @@ def plot_scores(
         plt.grid(True)
 
     plt.tight_layout(rect=[0, 0, 1, 0.96])
+    if save_path is not None : plt.savefig(save_path)
     plt.show()
 
 def plot_simulations(
     scores: dict,
     x_range: list,
-    title: str = ""
+    title: str = "",
+    save_path: str = None
     ) -> None:
     """
     Affiche un tableau de graphiques pour présenter les différents scores de simulation différentes.
@@ -236,19 +239,20 @@ def plot_simulations(
             raise ValueError(f"Le dictionnaire de scores n°{i} n'a pas les mêmes clés que le premier : {first_keys} vs {keys}")
 
     n_scores = len(score_keys)
-    plt.figure(figsize=(12, 5 * ((n_scores + 2) // 3)))
+    plt.figure(figsize=(12, 5 * ((n_scores+2) // 2)))
     plt.suptitle(title, fontsize=16)
 
     colors = plt.cm.get_cmap('tab10', len(scores))
 
     for i, key in enumerate(score_keys, 1):
-        plt.subplot((n_scores + 2) // 3, 3, i)
+        plt.subplot((n_scores + 2) // 2, 2, i)
         for j, (title_score, score_dict) in enumerate(scores.items()):
             plt.plot(
                 x_range,
                 score_dict[key],
                 marker='o',
                 linestyle='-',
+                linewidth=1.5,
                 color=colors(j),
                 label=title_score
             )
@@ -259,6 +263,7 @@ def plot_simulations(
         plt.grid(True)
 
     plt.tight_layout(rect=[0, 0, 1, 0.96])
+    if save_path is not None: plt.savefig(save_path)
     plt.show()
 
 def ista(
